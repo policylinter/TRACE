@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agent
+  namespace: trace
+spec:
+  # Heavy tier: scans (clone + scanner binaries + model cascade). Scale the
+  # replica count up for a high-load cluster; the Celery queue load-balances.
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agent
+  template:
+    metadata:
+      labels:
+        app: agent
+    spec:
+      containers:
+        - name: agent
+          image: trace-app:latest
+          imagePullPolicy: IfNotPresent
+          command: ["celery", "-A", "trace_api.worker", "worker", "--loglevel=info", "--concurrency=2"]
+          envFrom:
+            - configMapRef:
+                name: trace-config
+            - secretRef:
+                name: trace-secrets
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "512Mi"
+            limits:
+              cpu: "2"
+              memory: "2Gi"

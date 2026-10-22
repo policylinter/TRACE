@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: trace
+  namespace: trace
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "16m"
+spec:
+  rules:
+    - host: trace.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 80

@@ -1,0 +1,63 @@
+# TRACE — split deployment (web + heavy agent).
+#
+# The light web service serves the UI and enqueues scans; the agent runs them.
+# Postgres is the shared store, Redis the broker.
+#   docker compose -f deploy/docker-compose.split.yml up --build
+services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: trace_user
+      POSTGRES_PASSWORD: trace_password
+      POSTGRES_DB: trace_db
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trace_user"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  web:
+    build:
+      context: ../..
+      dockerfile: trace-core/Dockerfile
+    image: trace-app:latest
+    ports:
+      - "8000:8000"
+    environment: &backend_env
+      - TRACE_DATABASE_URL=postgresql://trace_user:trace_password@postgres:5432/trace_db
+      - TRACE_REDIS_URL=redis://redis:6379/0
+      - TRACE_GITLAB_TOKEN=${TRACE_GITLAB_TOKEN:-}
+      - TRACE_AI_BASE_URL=${TRACE_AI_BASE_URL:-}
+      - TRACE_AI_API_KEY=${TRACE_AI_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  agent:
+    build:
+      context: ../..
+      dockerfile: trace-core/Dockerfile
+    image: trace-app:latest
+    command: celery -A trace_api.worker worker --loglevel=info --concurrency=2
+    environment: *backend_env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # Scale the pool for heavy scans: docker compose ... up --scale agent=4
+
+volumes:
+  pg_data:

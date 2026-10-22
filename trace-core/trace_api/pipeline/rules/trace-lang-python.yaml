@@ -1,0 +1,58 @@
+# TRACE curated Python rules.
+#
+# Same contract as trace-vuln-api.yaml: `metadata.cve` + `metadata.package`
+# carry the advisory that a Python SAST match must link to, and
+# `metadata.reachability: reachable` lets the engine assert a live call site
+# even when Semgrep returns no interprocedural dataflow trace.
+rules:
+  - id: trace.python-yaml-unsafe-load
+    languages: [python]
+    severity: ERROR
+    message: >-
+      PyYAML load() of untrusted input uses the default Loader and can
+      instantiate arbitrary objects (CVE-2020-14343).
+    metadata:
+      cve: CVE-2020-14343
+      package: PyYAML
+      reachability: reachable
+      vulnerable_symbol: yaml.load
+      source: request-derived input
+    patterns:
+      - pattern: yaml.load($X)
+      - metavariable-regex:
+          metavariable: $X
+          regex: (?i).*(req|request|param|header|user|input|url|path|body|data|payload|content).*
+
+  - id: trace.python-yaml-unsafe-full-load
+    languages: [python]
+    severity: ERROR
+    message: >-
+      PyYAML full_load()/unsafe_load() of untrusted YAML executes arbitrary
+      constructors (CVE-2020-14343).
+    metadata:
+      cve: CVE-2020-14343
+      package: PyYAML
+      reachability: reachable
+      vulnerable_symbol: yaml.full_load
+      source: request-derived input
+    patterns:
+      - pattern-either:
+          - pattern: yaml.full_load($X)
+          - pattern: yaml.unsafe_load($X)
+      - metavariable-regex:
+          metavariable: $X
+          regex: (?i).*(req|request|param|header|user|input|url|path|body|data|payload|content).*
+
+  - id: trace.python-paramiko-secure-only
+    languages: [python]
+    severity: WARNING
+    message: >-
+      Paramiko rejected-policy client does not verify the server key fingerprint.
+    metadata:
+      cve: CVE-2022-24302
+      package: paramiko
+      reachability: reachable
+      vulnerable_symbol: AutoAddPolicy
+      source: connection endpoint
+    patterns:
+      - pattern: AutoAddPolicy()

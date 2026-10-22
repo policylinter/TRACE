@@ -1,0 +1,30 @@
+import {useEffect,useState} from 'react';
+import {getSemgrepBatches,importSemgrepBatch,type SemgrepBatchReceipt} from '@/lib/api';
+import {useTrace} from '@/state/TraceProvider';
+
+export function SemgrepBatchPanel({onImported}:{onImported:()=>void}){
+  const t=useTrace();const admin=!t.auth?.enabled||t.user?.role==='admin';
+  const [bundle,setBundle]=useState<{manifest:Record<string,unknown>;results:unknown[]}|null>(null);
+  const [items,setItems]=useState<SemgrepBatchReceipt[]>([]);const [offset,setOffset]=useState(0);const [revision,setRevision]=useState(0);
+  const [busy,setBusy]=useState(false);const [loading,setLoading]=useState(true);const [error,setError]=useState('');const [note,setNote]=useState('');
+  useEffect(()=>{let live=true;setLoading(true);setItems([]);setError('');void getSemgrepBatches(offset).then(value=>{if(live)setItems(value);}).catch(e=>{if(live)setError(e instanceof Error?e.message:String(e));}).finally(()=>{if(live)setLoading(false);});return()=>{live=false;};},[t.workspaceId,offset,revision]);
+  async function read(files:FileList|null){setBundle(null);setNote('');setError('');if(!files?.length)return;setBusy(true);try{
+    const list=Array.from(files);if(list.length>101||list.reduce((sum,f)=>sum+f.size,0)>1048576)throw new Error('До 101 файла и 1 МиБ суммарно.');
+    const names=new Set(list.map(f=>f.name));if(names.size!==list.length)throw new Error('Имена файлов должны быть уникальными.');
+    const manifestFile=list.find(f=>f.name==='manifest.json');if(!manifestFile)throw new Error('Выберите manifest.json вместе со всеми finding-файлами.');
+    const manifest=JSON.parse(await manifestFile.text());if(manifest.schemaVersion!=='trace.semgrep-conversion/1'||!Array.isArray(manifest.files)||!Array.isArray(manifest.documentSha256))throw new Error('Нужен манифест с documentSha256 из обновлённого адаптера.');
+    if(manifest.files.length>100||list.length!==manifest.files.length+1)throw new Error('Набор файлов не совпадает с манифестом.');
+    const results=[];for(let n=0;n<manifest.files.length;n++){const name=`finding-${String(n+1).padStart(3,'0')}.json`;if(manifest.files[n]!==name)throw new Error('Неверное сопоставление finding-файлов.');const file=list.find(f=>f.name===name);if(!file)throw new Error('Отсутствует '+name);results.push(JSON.parse(await file.text()));}
+    const value={manifest,results};if(new TextEncoder().encode(JSON.stringify(value)).length>1048576)throw new Error('Пакет запроса превышает 1 МиБ.');
+    setBundle(value);setNote('Файлы прочитаны. SHA-256 и контекст проверит сервер перед атомарным приёмом.');
+  }catch(e){setError(e instanceof Error?e.message:String(e));}finally{setBusy(false);}}
+  async function submit(){if(!bundle)return;setBusy(true);setError('');setNote('');try{const result=await importSemgrepBatch(bundle);setOffset(0);setRevision(n=>n+1);onImported();setNote('Пакет принят или уже был принят: '+result.runId+'. Создано при первом приёме: '+result.createdCount+', использовано прежних: '+result.reusedCount+'.');}catch(e){setError(e instanceof Error?e.message:String(e));}finally{setBusy(false);}}
+  return <details className="border border-hairline rounded-lg p-3 space-y-3"><summary className="cursor-pointer font-semibold">Пакетный импорт Semgrep и журнал приёма</summary><div className="space-y-3 mt-3"><p>Выберите manifest.json и все finding-*.json из одного каталога адаптера. До 100 находок и 1 МиБ. Проверка и сохранение выполняются целиком; конфликт одной записи откатывает пакет. Оригинальный Semgrep JSON сюда не загружается.</p>
+    {admin&&<><label className="field-label block">Файлы пакета Semgrep<input type="file" multiple accept=".json,application/json" disabled={busy} onChange={e=>void read(e.target.files)}/></label>{bundle&&<p>Подготовлен запуск {String(bundle.manifest.runId)} · записей {bundle.results.length}. Состояние отчёта: {String(bundle.manifest.reportState)}. Покрытие не подтверждено.</p>}<button className="btn" disabled={busy||!bundle} onClick={()=>void submit()}>Проверить и импортировать пакет Semgrep</button></>}
+    {error&&<p role="alert" className="text-rose-300 break-words">{error}</p>}{note&&<p role="status" className="break-words">{note}</p>}
+    <h3>Успешно принятые пакеты пространства</h3><p className="micro">Журнал хранит автора, суммы, манифест и ID результатов. Отклонённые попытки здесь не сохраняются. Нулевой пакет фиксирует доставку отчёта, а не безопасность кода. Это обычная БД с ограничениями неизменяемости, не внешняя аттестация.</p>
+    <button className="btn" disabled={loading||busy} onClick={()=>setRevision(n=>n+1)}>Обновить журнал Semgrep</button>
+    {loading?<p role="status">Загрузка журнала…</p>:!error&&!items.length?<p>Принятых пакетов пока нет.</p>:items.map(item=><details key={item.id} className="border-t border-hairline py-3"><summary className="cursor-pointer break-words">{item.runId} · {item.manifest.reportState==='partial'?'Сообщены ошибки/пропуски':item.manifest.reportState==='unknown'?'Полнота неизвестна':'В сводках не сообщено ошибок'} · {item.resultIds.length} результатов</summary><p>{new Date(item.receivedAt).toLocaleString('ru-RU')} · {item.receivedBy}</p><p>Создано: {item.createdCount}; использовано прежних: {item.reusedCount}; проигнорировано по исходному отчёту: {item.manifest.ignoredResults}.</p><p className="break-all">Commit оператора: {item.manifest.commit}. Соответствие коду не проверено.</p><code className="block break-all text-xs">SHA-256 пакета: {item.sha256}</code><code className="block break-all text-xs">SHA-256 отчёта: {item.manifest.reportSha256}</code><p className="micro">ID результатов:</p>{item.resultIds.length?item.resultIds.map(id=><code key={id} className="block break-all text-xs">{id}</code>):<p>Находки не создавались.</p>}</details>)}
+    <div className="flex flex-wrap gap-2"><button className="btn" disabled={loading||busy||!offset} onClick={()=>setOffset(n=>Math.max(0,n-20))}>Предыдущие пакеты</button><button className="btn" disabled={loading||busy||!!error||items.length<20} onClick={()=>setOffset(n=>n+20)}>Следующие пакеты</button></div>
+  </div></details>;
+}

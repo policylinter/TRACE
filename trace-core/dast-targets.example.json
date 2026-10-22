@@ -1,0 +1,4 @@
+[
+  {"id":"local-demo","name":"Локальный тестовый HTML без защитных заголовков","workspaceId":"default","projectId":1,"url":"http://127.0.0.1:8878/missing"},
+  {"id":"local-demo-secured","name":"Локальный тестовый HTML с заголовками","workspaceId":"default","projectId":1,"url":"http://127.0.0.1:8878/secured"}
+]

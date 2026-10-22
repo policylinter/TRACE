@@ -1,0 +1,64 @@
+# TRACE curated vulnerable-API rules.
+#
+# Unlike the registry rulesets (p/security-audit), every rule here carries
+# `metadata.cve` and `metadata.package`. That is the bridge the reachability
+# engine uses (`_result_matches`) to attach a concrete code finding to an SCA
+# advisory and emit a real source-to-sink path instead of an opaque `unknown`.
+#
+# `metadata.reachability: reachable` tells the engine the vulnerable API is
+# invoked directly in first-party code, so it can build a path even when Semgrep
+# returns no interprocedural dataflow trace.
+rules:
+  - id: trace.log4j-jndi-lookup
+    languages: [java, kotlin]
+    severity: ERROR
+    message: >-
+      JNDI lookup with attacker-influenced data (Log4Shell-class, CVE-2021-44228).
+    metadata:
+      cve: CVE-2021-44228
+      package: log4j-core
+      reachability: reachable
+      vulnerable_symbol: JndiLookup.lookup
+      source: request-derived input
+    patterns:
+      - pattern-either:
+          - pattern: (new javax.naming.InitialContext(...)).lookup($X)
+          - pattern: $CTX.lookup($X)
+      - metavariable-regex:
+          metavariable: $X
+          regex: (?i).*(req|request|param|header|user|input|url|path|body).*
+
+  - id: trace.jackson-default-typing
+    languages: [java, kotlin]
+    severity: ERROR
+    message: >-
+      Jackson polymorphic deserialization enabled without a base-type allowlist
+      (databind gadget class, e.g. CVE-2020-9548).
+    metadata:
+      cve: CVE-2020-9548
+      package: jackson-databind
+      reachability: reachable
+      vulnerable_symbol: ObjectMapper.enableDefaultTyping
+      source: deserialized payload
+    patterns:
+      - pattern-either:
+          - pattern: $MAPPER.enableDefaultTyping(...)
+          - pattern: $MAPPER.activateDefaultTyping(...)
+          - pattern: $MAPPER.enableDefaultTypingAsProperty(...)
+
+  - id: trace.snakeyaml-unsafe-load
+    languages: [java, kotlin]
+    severity: ERROR
+    message: >-
+      SnakeYAML loads untrusted YAML with the default constructor (arbitrary type
+      instantiation, CVE-2022-1471).
+    metadata:
+      cve: CVE-2022-1471
+      package: snakeyaml
+      reachability: reachable
+      vulnerable_symbol: Yaml.load
+      source: YAML document
+    patterns:
+      - pattern-either:
+          - pattern: new org.yaml.snakeyaml.Yaml().load($X)
+          - pattern: $YAML.load($X)

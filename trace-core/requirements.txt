@@ -1,0 +1,10 @@
+fastapi>=0.110
+uvicorn[standard]>=0.28
+SQLAlchemy>=2.0
+httpx>=0.27
+pydantic>=2.6
+# Postgres driver — optional at runtime (SQLite is the default for local runs).
+psycopg2-binary>=2.9
+# Task queue — optional; without it scans run in-process.
+celery[redis]>=5.4
+redis>=5.0

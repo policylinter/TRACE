@@ -1,0 +1,23 @@
+# TRACE curated Go rules.
+#
+# Same contract as trace-vuln-api.yaml: registry-independent SAST rules that
+# carry `metadata.cve` + `metadata.package` for SCA linkage and assert
+# reachability when the vulnerable call site is present.
+rules:
+  - id: trace.go-yaml-unmarshal-untrusted
+    languages: [go]
+    severity: ERROR
+    message: >-
+      gopkg.in/yaml.v2 Unmarshal of untrusted YAML can instantiate arbitrary
+      types (CVE-2019-11253).
+    metadata:
+      cve: CVE-2019-11253
+      package: gopkg.in/yaml.v2
+      reachability: reachable
+      vulnerable_symbol: yaml.Unmarshal
+      source: HTTP request body
+    patterns:
+      - pattern: yaml.Unmarshal($X, $Y)
+      - metavariable-regex:
+          metavariable: $X
+          regex: (?i).*(body|data|input|payload|content|raw|reader).*

@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+.trace-work/
+trace_api/trace.db
+*.db
+nohup.out
+.tools/

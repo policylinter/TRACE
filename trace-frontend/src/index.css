@@ -1,0 +1,840 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   TRACE design tokens — single source of truth for both themes.
+   The bootstrap script in index.html sets html[data-trace-theme].
+   ============================================================ */
+:root {
+  color-scheme: light;
+
+  /* Layout metrics */
+  --trace-sidebar-width: 232px;
+  --trace-sidebar-collapsed: 64px;
+  --trace-topbar-height: 56px;
+  --trace-control-height: 34px;
+  --trace-row-height: 44px;
+  --trace-radius: 10px;
+  --trace-reading: 13px;
+
+  /* Light palette — paper canvas, graphite ink, jade accent */
+  --theme-canvas: #f6f7f8;
+  --theme-surface: #ffffff;
+  --theme-alt: #f1f3f5;
+  --theme-hover: #e9edf2;
+  --theme-ink: #141a21;
+  --theme-secondary: #414c5b;
+  --theme-muted: #6d7887;
+  --theme-line: #e3e7ec;
+  --theme-strong: #ccd3dc;
+  --theme-accent: #0f7a5f;
+  --theme-accent-soft: #e6f4ee;
+  --theme-accent-contrast: #ffffff;
+  --theme-positive: #11776a;
+  --theme-warning: #8a5a17;
+  --theme-danger: #b23153;
+  --theme-danger-soft: #fbe9ee;
+  --theme-overlay: rgba(16, 22, 28, 0.42);
+  --theme-shadow:
+    0 1px 2px rgba(16, 24, 40, 0.05),
+    0 14px 34px -16px rgba(16, 24, 40, 0.18);
+
+  --graph-dot: #ccd6e5;
+  --graph-edge: #9aaccc;
+  --graph-highlight: #0f7a5f;
+  --graph-selected: #e6f4ee;
+  --graph-root: #edf4f1;
+  --graph-node: #ffffff;
+  --graph-border: #ccd5e0;
+  --graph-risk-border: #e0a4b4;
+
+  --canvas: var(--theme-canvas);
+  --surface: var(--theme-surface);
+  --surface-alt: var(--theme-alt);
+  --ink: var(--theme-ink);
+  --muted: var(--theme-muted);
+  --line: var(--theme-line);
+  --accent: var(--theme-accent);
+  --accent-soft: var(--theme-accent-soft);
+  --danger: var(--theme-danger);
+  --danger-soft: var(--theme-danger-soft);
+  --shadow: var(--theme-shadow);
+}
+
+html[data-trace-theme='dark'] {
+  color-scheme: dark;
+
+  /* Dark palette — graphite canvas, jade accent */
+  --theme-canvas: #0d1014;
+  --theme-surface: #14181d;
+  --theme-alt: #181d23;
+  --theme-hover: #1f252d;
+  --theme-ink: #e9edf2;
+  --theme-secondary: #b9c2cf;
+  --theme-muted: #8b95a3;
+  --theme-line: #252b33;
+  --theme-strong: #333b46;
+  --theme-accent: #34d399;
+  --theme-accent-soft: #123128;
+  --theme-accent-contrast: #06201a;
+  --theme-positive: #43d3a5;
+  --theme-warning: #e2b468;
+  --theme-danger: #f1879f;
+  --theme-danger-soft: #3a1a23;
+  --theme-overlay: rgba(5, 8, 11, 0.6);
+  --theme-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    0 16px 40px -16px rgba(0, 0, 0, 0.6);
+
+  --graph-dot: #343c47;
+  --graph-edge: #4d5766;
+  --graph-highlight: #6ee7b7;
+  --graph-selected: #14322a;
+  --graph-root: #133028;
+  --graph-node: #1a2026;
+  --graph-border: #3c4653;
+  --graph-risk-border: #a76b7d;
+}
+
+/* ============================================================
+   Theme bridge — maps legacy Tailwind utilities and shared
+   surfaces onto the active theme. Unlayered on purpose so it
+   always wins over generated utilities.
+   ============================================================ */
+html[data-trace-theme] body {
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+html[data-trace-theme] [class*='bg-ink-'] {
+  background-color: var(--surface-alt);
+  background-image: none;
+}
+
+html[data-trace-theme]
+  :is(.panel, .panel-flat, [class*='bg-ink-875'], [class*='bg-ink-900']) {
+  background-color: var(--surface);
+  border-color: var(--line);
+  color: var(--ink);
+}
+
+html[data-trace-theme] .trace-app {
+  background: var(--canvas);
+  color: var(--ink);
+}
+
+html[data-trace-theme]
+  :is([class*='fixed'][class*='inset-0'][class*='bg-ink-'], button[class*='absolute'][class*='inset-0'][class*='bg-ink-']) {
+  background: var(--theme-overlay);
+}
+
+html[data-trace-theme] :is(.border-hairline, .border-hairline-strong) {
+  border-color: var(--line);
+}
+
+html[data-trace-theme] [class*='divide-hairline'] > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--line);
+}
+
+html[data-trace-theme] [class*='ring-black'] {
+  --tw-ring-color: var(--line);
+}
+
+html[data-trace-theme] :is(.text-slate-50, .text-slate-100, .text-slate-200) {
+  color: var(--ink) !important;
+}
+
+html[data-trace-theme] .text-slate-300 {
+  color: var(--theme-secondary) !important;
+}
+
+html[data-trace-theme]
+  :is(.text-slate-400, .text-slate-500, .text-slate-600, .text-slate-700) {
+  color: var(--muted) !important;
+}
+
+html[data-trace-theme]
+  :is(.text-jade-200, .text-jade-300, .text-jade-400, .text-emerald-200, .text-emerald-300, .text-emerald-400) {
+  color: var(--theme-positive) !important;
+}
+
+html[data-trace-theme] :is(.text-rose-100, .text-rose-200, .text-rose-300, .text-rose-400) {
+  color: var(--danger) !important;
+}
+
+html[data-trace-theme] :is(.text-amber-100, .text-amber-200, .text-amber-300, .text-amber-400) {
+  color: var(--theme-warning) !important;
+}
+
+html[data-trace-theme] :is(.text-violet-200, .text-violet-300, .text-sky-300, .text-teal-300) {
+  color: var(--accent) !important;
+}
+
+html[data-trace-theme]
+  :is([class~='text-amber-100/90'], [class~='text-amber-300/80'], [class~='text-amber-200/80']) {
+  color: var(--theme-warning) !important;
+}
+
+html[data-trace-theme]
+  :is([class~='text-rose-100/90'], [class~='text-rose-200/80'], [class~='text-rose-300/80'], [class~='text-rose-400/70']) {
+  color: var(--danger) !important;
+}
+
+html[data-trace-theme] :is(.btn, .btn-ghost) {
+  color: var(--theme-secondary);
+  background: var(--surface);
+  border-color: var(--line);
+  box-shadow: none;
+}
+
+html[data-trace-theme] :is(.btn, .btn-ghost):hover {
+  color: var(--accent);
+  background: var(--theme-hover);
+  border-color: var(--theme-strong);
+}
+
+html[data-trace-theme] :is(.btn, .btn-ghost):disabled {
+  color: var(--muted);
+  background: var(--surface);
+}
+
+html[data-trace-theme] :is(.btn-primary, .wb-primary) {
+  color: var(--theme-accent-contrast);
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
+html[data-trace-theme] :is(.btn-primary, .wb-primary):hover {
+  color: var(--theme-accent-contrast);
+  background: color-mix(in srgb, var(--accent) 86%, #000);
+  border-color: color-mix(in srgb, var(--accent) 86%, #000);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+}
+
+html[data-trace-theme] :is(.btn-primary, .wb-primary):disabled,
+html[data-trace-theme] :is(.btn-primary, .wb-primary):disabled:hover {
+  opacity: 0.55;
+  background: var(--accent);
+}
+
+html[data-trace-theme] :is(input, select, textarea) {
+  color: var(--ink);
+  accent-color: var(--accent);
+}
+
+html[data-trace-theme]
+  :is(.field-label input, .trace-select, textarea) {
+  color: var(--ink) !important;
+  background: var(--surface) !important;
+  border-color: var(--theme-strong) !important;
+}
+
+html[data-trace-theme] .field-label {
+  color: var(--theme-secondary);
+}
+
+html[data-trace-theme] :is(input, textarea)::placeholder {
+  color: var(--muted);
+  opacity: 0.9;
+}
+
+html[data-trace-theme] :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  --tw-ring-color: transparent;
+}
+
+html[data-trace-theme] .shadow-float {
+  box-shadow: var(--theme-shadow);
+}
+
+html[data-trace-theme] :is(.wb-error, .risk-number, .priority-dot) {
+  color: var(--danger);
+}
+
+html[data-trace-theme] .risk-critical {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+html[data-trace-theme] :is(.risk-high, .risk-medium) {
+  color: var(--theme-warning);
+  background: color-mix(in srgb, var(--theme-warning) 12%, transparent);
+}
+
+html[data-trace-theme] :is(.risk-low, .risk-unknown) {
+  color: var(--muted);
+  background: var(--surface-alt);
+}
+
+html[data-trace-theme] .priority-severity {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+html[data-trace-theme] .priority-high {
+  color: var(--theme-warning);
+  background: color-mix(in srgb, var(--theme-warning) 12%, transparent);
+}
+
+html[data-trace-theme] .demo-ribbon > span {
+  color: var(--theme-warning);
+  background: color-mix(in srgb, var(--theme-warning) 10%, transparent);
+  border-color: color-mix(in srgb, var(--theme-warning) 25%, transparent);
+}
+
+/* Graphs follow the selected theme instead of being dark islands. */
+html[data-trace-theme] .snapshot-map {
+  background: var(--surface-alt);
+  color: var(--ink);
+  border-left: 1px solid var(--line);
+}
+
+html[data-trace-theme] .snapshot-map::before {
+  background-image: radial-gradient(var(--graph-dot) 0.7px, transparent 0.7px);
+  opacity: 0.55;
+}
+
+html[data-trace-theme] :is(.map-caption, .map-bottom) {
+  color: var(--muted);
+}
+
+html[data-trace-theme] :is(.map-bottom > span:last-child, .map-caption svg) {
+  color: var(--accent);
+}
+
+html[data-trace-theme] .map-caption i {
+  background: var(--accent);
+}
+
+html[data-trace-theme] .graph-viewport {
+  background: var(--surface-alt);
+}
+
+html[data-trace-theme] :is(.graph-legend, .graph-empty) {
+  color: var(--muted);
+}
+
+html[data-trace-theme] .graph-minimap {
+  background: var(--surface);
+  border-color: var(--theme-strong);
+}
+
+html[data-trace-theme] .graph-minimap > span {
+  color: var(--muted);
+}
+
+html[data-trace-theme] .graph-camera-controls {
+  background: var(--surface);
+  border-color: var(--theme-strong);
+  color: var(--ink);
+  box-shadow: var(--theme-shadow);
+}
+
+html[data-trace-theme] .graph-camera-controls button:hover {
+  background: var(--theme-hover);
+}
+
+html[data-trace-theme] .graph-camera-controls span {
+  color: var(--muted);
+}
+
+html[data-trace-theme] .graph-camera-controls i {
+  background: var(--line);
+}
+
+html[data-trace-theme] .graph-inspector {
+  box-shadow: var(--theme-shadow);
+}
+
+html[data-trace-theme] .inspector-finding strong {
+  color: var(--danger);
+}
+
+html[data-trace-theme] .code-location {
+  color: var(--ink);
+  background: var(--surface-alt);
+  border-color: var(--line);
+}
+
+html[data-trace-theme] .code-location > span {
+  color: var(--muted);
+  background: var(--theme-hover);
+}
+
+html[data-trace-theme] .code-location > code {
+  color: var(--ink);
+}
+
+html[data-trace-theme] .flow-danger {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: var(--graph-risk-border);
+}
+
+html[data-trace-theme] .graph-canvas {
+  background-color: var(--surface-alt);
+  background-image: radial-gradient(var(--graph-dot) 0.8px, transparent 0.8px);
+}
+
+@media (max-width: 900px) {
+  html[data-trace-theme] .snapshot-map {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+}
+
+html[data-trace-theme] .theme-backdrop {
+  background: var(--theme-overlay);
+}
+
+html[data-trace-theme] .syntax-key {
+  color: var(--accent);
+}
+
+html[data-trace-theme] .syntax-string {
+  color: var(--theme-positive);
+}
+
+html[data-trace-theme] .syntax-literal {
+  color: var(--accent);
+}
+
+html[data-trace-theme] .syntax-number {
+  color: var(--theme-warning);
+}
+
+html[data-trace-theme] .syntax-punctuation {
+  color: var(--muted);
+}
+
+html[data-trace-theme] :is(.severity-track, .project-status-dot) {
+  background: var(--theme-line);
+}
+
+html[data-trace-theme] .coverage-notice.coverage-error,
+html[data-trace-theme] .coverage-notice.coverage-error strong {
+  color: var(--theme-danger);
+}
+
+html[data-trace-theme] .coverage-notice.coverage-error {
+  border-left-color: var(--theme-danger);
+}
+
+/* ============================================================
+   Base
+   ============================================================ */
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-ink-950 font-sans text-[13px] text-slate-300 antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: color-mix(in srgb, var(--theme-accent) 30%, transparent);
+    color: var(--theme-ink);
+  }
+
+  /* Restrained, dense scrollbars — chrome, not decoration. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--theme-accent) 25%, transparent) transparent;
+  }
+
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: color-mix(in srgb, var(--theme-accent) 22%, transparent);
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in srgb, var(--theme-accent) 45%, transparent);
+    background-clip: content-box;
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  button,
+  [role='button'] {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* ============================================================
+   Components — the shared building blocks.
+   ============================================================ */
+@layer components {
+  /* Hairline-bordered surface — the single building block of the UI. */
+  .panel {
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+
+  .panel-flat {
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: var(--surface-alt);
+    box-shadow: none;
+  }
+
+  .micro {
+    @apply text-2xs font-semibold text-slate-400;
+  }
+
+  .micro-strong {
+    @apply text-[12.5px] font-bold tracking-tight text-slate-100;
+  }
+
+  .hairline-x {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .btn {
+    min-height: 34px;
+    display: inline-flex;
+    user-select: none;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    padding: 0 12px;
+    font-size: 12.5px;
+    font-weight: 550;
+    color: var(--theme-secondary);
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .btn:hover {
+    background: var(--theme-hover);
+    border-color: var(--theme-strong);
+    color: var(--ink);
+  }
+
+  .btn:active {
+    transform: translateY(0.5px);
+  }
+
+  .btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+    transform: none;
+  }
+
+  .btn-primary {
+    min-height: 36px;
+    display: inline-flex;
+    user-select: none;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: 8px;
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: var(--theme-accent-contrast);
+    padding: 0 15px;
+    font-size: 12.5px;
+    font-weight: 600;
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .btn-primary:hover {
+    background: color-mix(in srgb, var(--accent) 86%, #000);
+    border-color: color-mix(in srgb, var(--accent) 86%, #000);
+  }
+
+  .btn-primary:active {
+    transform: translateY(0.5px);
+  }
+
+  .btn-primary:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+    transform: none;
+  }
+
+  .btn-ghost {
+    min-height: 30px;
+    display: inline-flex;
+    user-select: none;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    padding: 0 9px;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--muted);
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .btn-ghost:hover {
+    background: var(--theme-hover);
+    color: var(--ink);
+  }
+}
+
+/* ============================================================
+   Utilities
+   ============================================================ */
+@layer utilities {
+  /* Tabular figures wherever numbers are compared. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+
+  .veil {
+    background-image:
+      radial-gradient(1300px 700px at 8% -16%, color-mix(in srgb, var(--theme-accent) 11%, transparent), transparent 58%),
+      radial-gradient(1000px 560px at 104% -6%, color-mix(in srgb, var(--theme-accent) 7%, transparent), transparent 58%),
+      linear-gradient(to right, color-mix(in srgb, var(--theme-accent) 5%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in srgb, var(--theme-accent) 5%, transparent) 1px, transparent 1px);
+    background-size:
+      100% 100%,
+      100% 100%,
+      56px 56px,
+      56px 56px;
+  }
+
+  .rule-top-fade {
+    background: linear-gradient(to bottom, color-mix(in srgb, var(--theme-accent) 7%, transparent), transparent);
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .drag-none {
+    -webkit-user-drag: none;
+    user-select: none;
+  }
+
+  .text-2xs {
+    font-size: 12px;
+    line-height: 1.5;
+  }
+
+  /* Shimmering skeleton surface for loading states. */
+  .skeleton {
+    @apply relative overflow-hidden rounded-lg border border-hairline bg-ink-900/70;
+  }
+
+  .skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      105deg,
+      transparent 40%,
+      color-mix(in srgb, var(--theme-accent) 7%, transparent) 50%,
+      transparent 60%
+    );
+    animation: shimmer 1.8s ease-in-out infinite;
+  }
+
+  .glow {
+    text-shadow: 0 0 18px rgba(226, 232, 240, 0.22);
+  }
+
+  .glow-rose {
+    text-shadow: 0 0 20px color-mix(in srgb, var(--theme-danger) 40%, transparent);
+  }
+
+  .glow-emerald {
+    text-shadow: 0 0 20px color-mix(in srgb, var(--theme-accent) 40%, transparent);
+  }
+
+  @keyframes shimmer {
+    100% {
+      transform: translateX(100%);
+    }
+  }
+}
+
+/* ============================================================
+   Typography and reading rhythm — unlayered so shared screens
+   keep a single heading scale regardless of utility classes.
+   ============================================================ */
+.page-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 4px 0 8px;
+}
+
+.page-heading h1 {
+  margin-top: 8px;
+  font-size: clamp(24px, 3vw, 34px);
+  font-weight: 650;
+  color: var(--ink);
+  letter-spacing: -0.035em;
+  line-height: 1.2;
+}
+
+.page-heading p:not(.eyebrow) {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.eyebrow {
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.section-title {
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.context-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--theme-secondary);
+  background: var(--surface);
+  font-size: 12px;
+}
+
+.field-label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--theme-secondary);
+  font-size: 12px;
+}
+
+.field-label input,
+.trace-select {
+  min-height: var(--trace-control-height);
+  border: 1px solid var(--theme-strong);
+  background: var(--surface);
+  border-radius: 8px;
+  color: var(--ink);
+  padding: 8px 11px;
+  font-size: 13px;
+}
+
+.field-label input:focus,
+.trace-select:focus {
+  outline: 2px solid color-mix(in srgb, var(--theme-accent) 45%, transparent);
+  outline-offset: 1px;
+}
+
+.empty-state {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.empty-state-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  margin: 0 auto 16px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.empty-state-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.empty-state.compact {
+  padding: 28px 20px;
+}
+
+.explore-link {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  color: var(--theme-secondary);
+  font-size: 14px;
+}
+
+.explore-link:hover {
+  color: var(--accent);
+}
+
+.trace-app .animate-orb-a,
+.trace-app .animate-orb-b,
+.trace-app .animate-logo-pulse {
+  animation: none;
+}
+
+.trace-app :is(.shadow-glow, .shadow-panel) {
+  box-shadow: none;
+}
+
+@media (max-width: 760px) {
+  .trace-content {
+    padding: 18px 14px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

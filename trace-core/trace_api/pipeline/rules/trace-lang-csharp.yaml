@@ -1,0 +1,25 @@
+# TRACE curated C# (.NET) rules.
+#
+# Same contract as trace-vuln-api.yaml: `metadata.cve` + `metadata.package`
+# link a .NET SAST match to its advisory; `reachability: reachable` asserts the
+# vulnerable API is invoked in first-party code.
+rules:
+  - id: trace.csharp-jsonnet-typenamehandling
+    languages: [csharp]
+    severity: ERROR
+    message: >-
+      Newtonsoft.Json DeserializeObject of untrusted JSON with type-name
+      handling can construct arbitrary types (CVE-2024-21907).
+    metadata:
+      cve: CVE-2024-21907
+      package: Newtonsoft.Json
+      reachability: reachable
+      vulnerable_symbol: TypeNameHandling
+      source: HTTP request body
+    patterns:
+      - pattern-either:
+          - pattern: JsonConvert.DeserializeObject<object>($X)
+          - pattern: JsonConvert.DeserializeObject($X, $ARGS)
+      - metavariable-regex:
+          metavariable: $X
+          regex: (?i).*(body|req|request|payload|input|data|content|reader|stream).*

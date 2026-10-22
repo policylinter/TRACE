@@ -1,0 +1,25 @@
+# TRACE — all-in-one.
+#
+# One container: the API serves the UI and runs scans in-process (no Redis, no
+# Celery, SQLite on a named volume). `docker compose -f deploy/docker-compose.all-in-one.yml up --build`
+services:
+  trace:
+    build:
+      context: ../..
+      dockerfile: trace-core/Dockerfile
+    image: trace-app:latest
+    container_name: trace-all-in-one
+    ports:
+      - "8000:8000"
+    volumes:
+      - trace_data:/data
+    environment:
+      - TRACE_DATABASE_URL=sqlite:////data/trace.db
+      # Set these to let TRACE clone private projects / reach a model endpoint.
+      - TRACE_GITLAB_TOKEN=${TRACE_GITLAB_TOKEN:-}
+      - TRACE_OLLAMA_URL=${TRACE_OLLAMA_URL:-http://host.docker.internal:11434}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  trace_data:

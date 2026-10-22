@@ -1,0 +1,55 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: trace-postgres
+    environment:
+      POSTGRES_USER: trace_user
+      POSTGRES_PASSWORD: trace_password
+      POSTGRES_DB: trace_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: trace-redis
+    ports:
+      - "6379:6379"
+
+  # Combined image: FastAPI serves both the /api/v1 routes and the compiled UI
+  # on a single origin (http://localhost:8000).
+  web:
+    build:
+      context: ..
+      dockerfile: trace-core/Dockerfile
+    image: trace-app
+    container_name: trace-web
+    ports:
+      - "8000:8000"
+    environment:
+      - TRACE_DATABASE_URL=postgresql://trace_user:trace_password@postgres:5432/trace_db
+      - TRACE_REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - postgres
+      - redis
+
+  # Optional Celery worker (GitLab-webhook scans). Not started by default:
+  #   docker compose --profile agent up
+  # It additionally needs Trivy/Semgrep on PATH.
+  agent:
+    profiles: ["agent"]
+    build:
+      context: ..
+      dockerfile: trace-core/Dockerfile
+    image: trace-app
+    container_name: trace-agent
+    command: celery -A trace_api.worker worker --loglevel=info
+    environment:
+      - TRACE_DATABASE_URL=postgresql://trace_user:trace_password@postgres:5432/trace_db
+      - TRACE_REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+
+volumes:
+  postgres_data:

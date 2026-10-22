@@ -1,0 +1,31 @@
+{
+  "name": "trace-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "TRACE — Transitive Reachability Analysis & Contextual Exploitability",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "tsc --noEmit && node scripts/build.mjs",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "smoke": "node smoke-build.mjs && node smoke.bundle.mjs",
+    "test:api": "node scripts/api-compat-smoke.mjs"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.17",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "esbuild": "^0.21.5",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
+    "typescript": "~5.6.3",
+    "vite": "^5.4.11"
+  }
+}

@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: trace-config
+  namespace: trace
+data:
+  # Shared backend wiring. Every value maps to a TRACE_* env knob.
+  TRACE_DATABASE_URL: "postgresql://trace_user:trace_password@postgres:5432/trace_db"
+  TRACE_REDIS_URL: "redis://redis:6379/0"
+  TRACE_GITLAB_URL: "https://gitlab.com"
+  # AI cascade: each model reviews the previous one. Point at an in-cluster
+  # Ollama service, or an OpenAI-compatible endpoint via TRACE_AI_BASE_URL.
+  TRACE_AI_PROVIDER: "auto"
+  TRACE_AI_MODELS: "qwen2.5-coder:7b,qwen2.5-coder:14b"
+  TRACE_OLLAMA_URL: "http://ollama:11434"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: trace-secrets
+  namespace: trace
+type: Opaque
+stringData:
+  # Replace before applying, or create with `kubectl create secret`.
+  TRACE_GITLAB_TOKEN: ""
+  TRACE_AI_API_KEY: ""

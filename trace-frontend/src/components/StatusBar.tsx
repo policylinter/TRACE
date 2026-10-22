@@ -1,0 +1,3 @@
+import { useTrace } from '@/state/TraceProvider';
+import { isDemoScan } from '@/lib/scanMode';
+export function StatusBar() { const { scan, health, error } = useTrace(); return <footer className="workbench-statusbar"><span><i style={{ background: health?.status === 'ok' && !error ? '#57bda9' : '#df8799' }}/>{health?.status === 'ok' && !error ? 'TRACE подключён' : 'Нет подключения'}</span><span className="statusbar-context">{scan ? `${scan.repository} · ${scan.branch}` : 'Нет активной проверки'}</span><span className="statusbar-end">{isDemoScan(scan) && <b>Демо</b>}<span>v{health?.version || '—'}</span></span></footer>; }

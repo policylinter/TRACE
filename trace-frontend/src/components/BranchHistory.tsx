@@ -1,0 +1,29 @@
+import { scanStatusLabel } from '@/lib/scanState';
+import { useState } from 'react';
+import { useTrace } from '@/state/TraceProvider';
+import { IconGraph, IconList, IconChevronRight } from '@/components/icons';
+import { isDemoScan } from '@/lib/scanMode';
+export function BranchHistory() {
+    const t = useTrace();
+    const [branch, setBranch] = useState('all');
+    const [mode, setMode] = useState<'graph' | 'list'>('list');
+    const [pick, setPick] = useState<string | null>(null);
+    const projectScans = t.scans.filter(s => s.projectId === (t.projectId ?? t.scan?.projectId));
+    const [error, setError] = useState('');
+    const [deleting, setDeleting] = useState(false);
+    async function remove(id: string) { if (!window.confirm('Удалить выбранную проверку и её находки? Это действие необратимо.')) return; setDeleting(true); setError(''); try { await t.removeScan(id); setPick(null); } catch(e) { setError(e instanceof Error ? e.message : 'Не удалось удалить проверку'); } finally {setDeleting(false);} }
+    const scans = [...projectScans].filter(s => branch === 'all' || s.branch === branch).sort((a, b) => a.scannedAt.localeCompare(b.scannedAt));
+    const branches = [...new Set(scans.map(s => s.branch))];
+    const allBranches = [...new Set(projectScans.map(s => s.branch))];
+    const selected = scans.find(s => s.id === (pick || t.activeScanId));
+    const width = Math.max(720, scans.length * 170 + 250);
+    const height = Math.max(190, branches.length * 110 + 90);
+    const colors = ['#7896e8', '#aa8cce', '#63aba6', '#d4a476', '#c47c97'];
+    return <section className="wb-card branch-history"><div className="wb-card-heading"><div><span className="wb-kicker">ИСТОРИЯ АНАЛИЗА</span><h2>История проверок</h2><p className="wb-footnote">{projectScans.length} запусков · {allBranches.length} веток</p></div><div className="flex flex-wrap items-center gap-2"><select aria-label="Ветка на карте" className="trace-select" value={branch} onChange={e => setBranch(e.target.value)}><option value="all">Все ветки</option>{allBranches.map(b => <option key={b}>{b}</option>)}</select><div className="history-view-toggle"><button aria-label="Граф проверок" aria-pressed={mode === 'graph'} onClick={() => setMode('graph')}><IconGraph className="h-4 w-4"/></button><button aria-label="Список проверок" aria-pressed={mode === 'list'} onClick={() => setMode('list')}><IconList className="h-4 w-4"/></button></div></div></div>
+ {!scans.length ? <div className="wb-empty">В этой ветке пока нет сохранённых проверок.</div> : mode === 'graph' ? <div className="branch-chart-scroll"><svg width={width} height={height} role="group" aria-label="Хронология проверок по веткам">{branches.map((b, row) => { const color = colors[row % colors.length]; const y = 65 + row * 110; const items = scans.map((s, i) => ({ ...s, x: 225 + i * 170 })).filter(s => s.branch === b); return <g key={b}><rect x="0" y={y - 37} width={width} height="90" fill={row % 2 === 0 ? 'var(--surface-alt)' : 'transparent'} rx="8"/><text x="17" y={y - 4} fontFamily="system-ui" fontSize="11" fill="var(--ink)">{b.length > 24 ? b.slice(0, 23) + '…' : b}</text><text x="17" y={y + 15} fontFamily="system-ui" fontSize="9" fill="var(--muted)">{items.length} запусков</text><path d={`M185 ${y} H${width - 35}`} stroke={color} strokeWidth="1.5" strokeDasharray="4 5" opacity=".45"/>{items.map(s => <g key={s.id} role="button" tabIndex={0} aria-label={`Запуск ${s.commit || s.id} в ветке ${s.branch}`} aria-pressed={selected?.id === s.id} onClick={() => setPick(s.id)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        setPick(s.id);
+    } }} style={{ cursor: 'pointer' }}><circle cx={s.x} cy={y} r={selected?.id === s.id ? 12 : 9} fill="var(--surface)" stroke={color} strokeWidth={selected?.id === s.id ? 3 : 2}/><circle cx={s.x} cy={y} r="3" fill={s.status === 'failed' ? '#d66c87' : color}/><text x={s.x} y={y - 23} textAnchor="middle" fontSize="9" fontFamily="ui-monospace,monospace" fill="var(--ink)">{s.commit || 'без коммита'}</text><text x={s.x} y={y + 30} textAnchor="middle" fontSize="9" fontFamily="system-ui" fill="var(--muted)">{new Date(s.scannedAt).toLocaleDateString('ru-RU')} · {s.counts.total} находок</text><title>{s.repository} · {s.scannedAt}</title></g>)}</g>; })}</svg></div> : <div className="branch-list">{[...scans].reverse().map(s => <button key={s.id} onClick={() => setPick(s.id)} className={selected?.id === s.id ? 'is-selected' : ''}><span>⑂ {s.branch}</span><code>{s.commit || s.id}</code><span>{scanStatusLabel(s.status)}</span><span>{s.counts.total} находок</span><time>{new Date(s.scannedAt).toLocaleDateString('ru-RU')}</time><IconChevronRight className="h-4 w-4"/></button>)}</div>}
+ {selected && <div className="branch-selection"><div className="branch-selection-label"><span className="wb-kicker">ВЫБРАННЫЙ ЗАПУСК</span><strong>{selected.commit || selected.id}{isDemoScan(selected) && <span className="wb-count">Демо</span>}</strong><p>{selected.branch} · {selected.duration}</p></div><div className="branch-selection-metrics"><div><strong>{selected.counts.total}</strong><span>находок</span></div><div><strong>{selected.counts.actionable}</strong><span>приоритетных</span></div><div><strong>{selected.counts.needsReview}</strong><span>на проверке</span></div></div><button className="wb-button wb-primary" onClick={() => { t.setActiveScan(selected.id); t.navigate('overview'); }}>Открыть результаты →</button><button className="btn" disabled={deleting || (!!t.auth?.enabled && t.user?.role !== 'admin')} onClick={() => void remove(selected.id)}>{deleting ? 'Удаление…' : 'Удалить проверку'}</button></div>}
+ {error && <p role="alert" className="wb-error">{error}</p>}<p className="branch-chart-note">Линии показывают хронологию сохранённых проверок одной ветки. Данные о родительских коммитах и слияниях Git не загружены.</p></section>;
+}
